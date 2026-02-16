@@ -1,34 +1,38 @@
 <?php
- session_start();
-  require "db_connection.php";
+session_start();
+require "db_connection.php";
 
-  if (!isset($_SESSION['user_id']))
-   {
-    header("Location:dashboard.php");
+// If already logged in, go to dashboard
+if (isset($_SESSION['user_id'])) {
+    header("Location: dashboard.php");
     exit();
-       }
+}
 
-  if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    // Get form data
-    $name = $_POST['name'];
-    $email = $_POST['email'];
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+
+    $name = trim($_POST['name']);
+    $email = trim($_POST['email']);
     $password = $_POST['password'];
-    $stmt = $con->prepare("INSERT INTO users (name, email, password) 	VALUES (?, ?, ?)");
-    $stmt->bind_param("sss", $name, $email, $password);
-    
-    if ($stmt->execute()) {
-      echo "
-      <script>
-        alert('New user added successfully! Please Log In');
-        document.location = 'login.php';
-      </script>";
-    } else {
-      echo "Error: " . $stmt->error;
-    }
-    $stmt->close();
-  }
-?>
 
+    // Hash the password securely (bcrypt)
+    $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+
+    $stmt = $con->prepare("INSERT INTO users (name, email, password) VALUES (?, ?, ?)");
+    $stmt->bind_param("sss", $name, $email, $hashed_password);
+
+    if ($stmt->execute()) {
+        echo "
+        <script>
+            alert('New user added successfully! Please Log In');
+            document.location = 'login.php';
+        </script>";
+    } else {
+        echo "Error: " . $stmt->error;
+    }
+
+    $stmt->close();
+}
+?>
 
 <!DOCTYPE html>
 <html>
