@@ -2,10 +2,18 @@
 session_start();
 require "db_connection.php";
 
-// If already logged in, go to dashboard
+// If already logged in, redirect
 if (isset($_SESSION['user_id'])) {
     header("Location: dashboard.php");
     exit();
+}
+
+function error_alert($message){
+    echo "
+    <script>
+        alert('$message');
+        window.location.href='registration.php';
+    </script>";
 }
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
@@ -14,7 +22,20 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $email = trim($_POST['email']);
     $password = $_POST['password'];
 
-    // Hash the password securely (bcrypt)
+    // Check if email already exists
+    $check_stmt = $con->prepare("SELECT id FROM users WHERE email = ?");
+    $check_stmt->bind_param("s", $email);
+    $check_stmt->execute();
+    $check_stmt->store_result();
+
+    if ($check_stmt->num_rows > 0) {
+        $check_stmt->close();
+        error_alert("Email already registered. Please use another email.");
+        exit();
+    }
+    $check_stmt->close();
+
+    // Hash password securely
     $hashed_password = password_hash($password, PASSWORD_DEFAULT);
 
     $stmt = $con->prepare("INSERT INTO users (name, email, password) VALUES (?, ?, ?)");
@@ -23,11 +44,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     if ($stmt->execute()) {
         echo "
         <script>
-            alert('New user added successfully! Please Log In');
-            document.location = 'login.php';
+            alert('Registration successful! Please Log In');
+            window.location.href='login.php';
         </script>";
     } else {
-        echo "Error: " . $stmt->error;
+        // In case UNIQUE constraint triggers
+        error_alert("Registration failed. Email may already exist.");
     }
 
     $stmt->close();
